@@ -1,0 +1,192 @@
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+import yfinance as yf
+
+df=yf.download("AAPL",start="2023-1-1",end="2024-1-1")
+
+def calculate_vol(data,period):
+
+    std=data.Close.rolling(period,min_periods=1).std()
+    mean=std.mean()
+    std.fillna(mean, inplace=True)
+    vol=std/period
+
+    return vol
+
+df["Volatility"]=calculate_vol(df,10)
+avg_vol=df["Volatility"].mean()
+print(avg_vol)
+dev_vol=df["Volatility"].std()
+print(dev_vol)
+df["price_change"]=df['Close'].diff()
+df["price_change"].fillna(0, inplace=True)
+df['AbsChange'] = abs(df['price_change'])
+df["AbsChange"].fillna(0, inplace=True)
+
+def calculate_rvi(data, period=14):
+    data['RVI'] = np.nan
+
+    for i in range(period, len(data)):
+        positive_changes = data['price_change'].iloc[i-period+1:i+1][data['price_change'].iloc[i-period+1:i+1] > 0].sum()
+        negative_changes = abs(data['price_change'].iloc[i-period+1:i+1][data['price_change'].iloc[i-period+1:i+1] < 0].sum())
+
+        if positive_changes + negative_changes != 0:
+            rvi = (positive_changes / (positive_changes + negative_changes)) * 100
+            data.loc[data.index[i], 'RVI'] = rvi
+
+    return data['RVI']
+
+rvi=calculate_rvi(df)
+df["RVI"]=rvi
+
+win=10
+df['MA']=df['Close'].rolling(window=win).mean()
+df['STD']=df['Close'].rolling(window=win).std()
+df['Upper']=df['MA']+2*df['STD']
+df['Lower']=df['MA']-2*df['STD']
+
+def BBMR(data):
+    data['signal_bbmr']=0
+    for i in range(1,len(data)-2):
+        # Sell
+        if(data['Close'][i] > data['Upper'][i]):
+          data.loc[data.index[i], 'signal_bbmr'] = 1
+        if((data['Close'][i]<data['Upper'][i])and(data['Close'][i]>data['MA'][i])and(data['Close'][i]<data['Close'][i-1])and(data['Close'][i-1]>data['Close'][i-2])):
+          data.loc[data.index[i], 'signal_bbmr'] = 1
+        # Buy
+        if(data['Close'][i] < data['Lower'][i]):
+          data.loc[data.index[i], 'signal_bbmr'] = -1
+        if((data['Close'][i]>data['Lower'][i])and(data['Close'][i]<data['MA'][i])and(data['Close'][i-1]<data['Close'][i])and(data['Close'][i-1]<data['Close'][i-2])):
+          data.loc[data.index[i], 'signal_bbmr'] = -1
+    return data
+BBMR(df)
+
+
+plt.figure(figsize=(20,6))
+plt.plot(df['Close'], label='Close Price', color='blue')
+plt.plot(df['MA'], label='Moving Average', color='orange')
+plt.plot(df['Upper'], label='Upper Bollinger band', color='red',)
+plt.plot(df['Lower'], label='Lower Bollinger band ', color='green',)
+plt.title('Bollinger bands')
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(20, 6))
+plt.plot(df["Volatility"], label="Volatility")
+plt.title('Volatility')
+plt.xlabel('Date')
+plt.ylabel('Volatility')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(20,8))
+plt.plot(df["RVI"], label='RVI',color='red')
+plt.title('Relative Volatility Index (RVI)')
+plt.xlabel('Date')
+plt.ylabel('RVI')
+plt.legend()
+plt.show()
+
+def returns(data,mean_vol,dev):
+  amount=10000
+  position=0
+  noofshare=0
+  min=0
+  max=0
+  vol=data['Volatility']
+  rvi=data["RVI"]
+  sl=0
+  for i in range(len(data)):
+    sig=df['signal_bbmr'][i]
+    price=df['Close'][i]
+
+    if(sig==1):
+      if(vol[i]>avg_vol+dev and noofshare>0 and ((rvi[i]>=50 and rvi[i]<=60) or (rvi[i]<=40))):
+        if(noofshare<15):
+          amount+=noofshare*price
+          noofshare=0
+        if(noofshare>15):
+          amount+=15*price
+          noofshare-=15
+
+      if(vol[i]>avg_vol+dev and noofshare>0 and (not(rvi[i]>=50 and rvi[i]<=60) or (rvi[i]<=40))):
+        if(noofshare<10):
+          amount+=noofshare*price
+          noofshare=0
+        if(noofshare>10):
+          amount+=10*price
+          noofshare-=10
+
+      if(vol[i]>avg_vol and noofshare>0 and (not(rvi[i]>=50 and rvi[i]<=60) or (rvi[i]<=40))):
+        if(noofshare<15):
+          amount+=noofshare*price
+          noofshare=0
+        if(noofshare>15):
+          amount+=15*price
+          noofshare-=15
+
+      if(vol[i]>avg_vol and noofshare>0 and ((rvi[i]>=50 and rvi[i]<=60) or (rvi[i]<=40))):
+        if(noofshare<20):
+          amount+=noofshare*price
+          noofshare=0
+        if(noofshare>20):
+          amount+=20*price
+          noofshare-=20
+
+      if(vol[i]<=avg_vol and noofshare>0):
+        amount+=noofshare*price
+        noofshare=0
+
+    if(sig==-1):
+      if(vol[i]>avg_vol+dev and ((rvi[i]>=40 and rvi[i]<=50) or (rvi[i]>=60))):
+        if(amount<4000):
+          noofshare+=(amount//price)
+          amount-=(amount//price)*price
+        if(amount>=4000):
+          noofshare+=4000//price
+          amount-=4000
+
+      if(vol[i]>avg_vol+dev and (not(rvi[i]>=40 and rvi[i]<=50) or (rvi[i]>=60))):
+        if(amount<3000):
+          noofshare+=(amount//price)
+          amount-=(amount//price)*price
+        if(amount>=3000):
+          noofshare+=3000//price
+          amount-=3000
+
+      if(vol[i]>avg_vol and ((rvi[i]>=40 and rvi[i]<=50) or (rvi[i]>=60))):
+        if(amount<6000):
+          noofshare+=(amount//price)
+          amount-=(amount//price)*price
+        if(amount>=6000):
+          noofshare+=6000//price
+          amount-=6000
+
+      if(vol[i]>avg_vol and (not(rvi[i]>=40 and rvi[i]<=50) or (rvi[i]>=60))):
+        if(amount<5000):
+          noofshare+=(amount//price)
+          amount-=(amount//price)*price
+        if(amount>=5000):
+          noofshare+=5000//price
+          amount-=5000
+
+      if(vol[i]<=avg_vol and amount>0):
+        noofshare+=(amount//price)
+        amount-=(amount//price)*price
+
+
+
+  amount+=noofshare*price
+  return (amount-10000)/100
+
+
+
+x=returns(df,avg_vol,dev_vol)
+x
+
+
