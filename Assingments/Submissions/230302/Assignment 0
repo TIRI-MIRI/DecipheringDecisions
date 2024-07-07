@@ -1,0 +1,59 @@
+!pip install yfinance
+!pip install numpy
+!pip install pandas
+!pip install matplotlib
+
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+#Problem-1(a)
+ticker='TSLA'
+startdate = '2023-01-01'
+enddate = '2024-01-01'
+data=yf.download(ticker,startdate,enddate)
+print(data)
+
+#Problem-1(b)
+visualise_data= pd.DataFrame(data)
+print(visualise_data)
+
+#Problem-2
+"""
+Comparing the graph plotted above with one on trading view with the duration jan23-jan24, we can see that the graph plotted above is very similar to that in Trading View.
+"""
+
+#Problem-1(c)
+plt.figure(figsize=(9,5))
+plt.plot(data.index,data['Close'])
+plt.title('Closing Price of '+ ticker)
+plt.xlabel('Date')
+plt.ylabel('Closing Price')
+plt.show()
+
+#Problem-3
+def transpose_matrix(matrix):
+    num_rows = len(matrix)
+    num_cols = len(matrix[0])
+    transposed_matrix = [[0 for _ in range(num_rows)] for _ in range(num_cols)]
+    for i in range(num_rows):
+        for j in range(num_cols):
+            transposed_matrix[j][i] = matrix[i][j]
+
+    return transposed_matrix
+
+#Problem-4
+def is_palindrome(text):
+    cleaned_text = ""
+    for char in text:
+        if char.isalnum():
+            cleaned_text += char.lower()
+
+    return cleaned_text==cleaned_text[::-1]
+
+text = input("Enter the text: ")
+if is_palindrome(text):
+    print("True")
+else:
+    print("False")
