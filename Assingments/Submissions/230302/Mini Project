@@ -1,0 +1,196 @@
+%pip install hurst
+%pip install numpy
+%pip install pandas
+%pip install matplotlib
+
+import pandas as pd
+import numpy as np
+import yfinance as yf
+import matplotlib
+import matplotlib.pyplot as plt
+from datetime import datetime
+from hurst import compute_Hc
+import math
+
+data_bse=yf.download("^BSESN","1997-07-01","2007-12-31")
+data_nse=yf.download("^NSEI","2002-08-01","2007-12-31")
+data_snp=yf.download("^SPX","1997-07-01","2007-12-31")
+
+mean_bse=sum(data_bse['Adj Close'])/len(data_bse)
+mean_bse
+
+mean_snp=sum(data_snp['Adj Close'])/len(data_snp)
+mean_snp
+
+data_bse['Logval'] = np.log(data_bse['Adj Close'])
+dev=np.std(data_bse["Adj Close"])
+print(dev)
+
+data_snp['Logval'] = np.log(data_snp['Adj Close'])
+dev=np.std(data_snp["Adj Close"])
+print(dev)
+
+data_snp["logret"]=['0']*len(data_snp)
+data_snp["profile"]=['0']*len(data_snp)
+
+for i in range(len(data_snp)-1):
+    data_snp['logret'][i]=(data_snp['Logval'][i+1]-data_snp['Logval'][i])/dev
+
+for p in range(len(data_snp)-2):
+    data_snp["profile"][p]=(data_snp['logret'][p+1]-data_snp['logret'][p])
+
+def hurst_exponent(data):
+
+    def range_segment(data,lag):
+        data = np.array(data)
+        segment_max = [np.max(data[i:i+lag]) for i in range(0, len(data)-lag+1, lag)]
+        segment_min = [np.min(data[i:i+lag]) for i in range(0, len(data)-lag+1, lag)]
+        return np.mean(segment_max) - np.mean(segment_min)
+
+    std_dev = np.std(data['profile'])
+
+    rs_values = []
+
+    for lag in range(10, len(data)//2, 10):
+        rs = range_segment(data['profile'], 2)
+        rs_values.append(rs / std_dev)
+
+    log_rs = np.log(rs_values)
+    log_lags = np.log(range(10, len(data)//2, 10))
+    slope, _ = np.polyfit(log_lags, log_rs, 1)
+
+    hurst = slope
+
+    return hurst
+
+data_bse["logret"]=['0']*len(data_bse)
+data_bse["profile"]=['0']*len(data_bse)
+
+for i in range(len(data_bse)-1):
+    data_bse['logret'][i]=(data_bse['Logval'][i+1]-data_bse['Logval'][i])/dev
+
+for p in range(len(data_bse)-2):
+    data_bse["profile"][p]=(data_bse['logret'][p+1]-data_bse['logret'][p])
+
+def fluct(s,data,q):
+    f=0
+    rev_data = data.iloc[::-1]
+    s=s.astype(int)
+    p=len(data['Close'])
+    l=int(p//s)
+    for v in range((l)):
+        (bestfit(pd.DataFrame(data.iloc[(v)*s:(v+1)*s]),v,s))
+        (bestfit(pd.DataFrame(rev_data[v*s:(v+1)*s]),v,s))
+        a1=pd.to_numeric(arr1, errors='coerce')
+        a2=pd.to_numeric(arr2, errors='coerce')
+        d1=pd.to_numeric(data['profile'], errors='coerce')
+        d2=pd.to_numeric(rev_data['profile'], errors='coerce')
+        for i in range(s):
+            f=f+(((((d1[(v)*s+i])-a1[v*s+i]))**2)/s)**(q/2)+(((((d2[(v)*s+i])-a2[v*s+i]))**2)/s)**(q/2)
+    f=((f)/(2*len(data)))**(1/q)
+    return f
+
+
+def hurst(data):
+
+    x_values = np.linspace(1,len(data)+1, len(data)//25)
+    x=x_values.astype(int)
+    print(x_values)
+
+    y_values = np.zeros(len(data)//25)
+    y_values[:] = 1
+
+    plt.figure(figsize=(12, 6))
+    for i in range(len(data)//25):
+        y_values[i] = fluct(x_values[i],data,2)
+
+    log_x=np.log(x_values)
+    log_y=np.log(y_values)
+
+    Hurst=((log_y[len(data)//25]-log_y[0])/(log_x[len(data)//25]-log_x[0]))
+    print("Hurst Exponent is:",Hurst)
+
+def bestfit(data,v,s):
+
+    degree =35
+    coefficients = np.polyfit(data["x"].astype('float'), data["profile"].astype('float'), degree)
+    polynomial_function = np.poly1d(coefficients)
+
+    for i in range(s):
+        arr[v*s+i]=polynomial_function(v*s+i)
+
+x_coord=['0']*len(data_bse)
+for i in range(len(data_bse)):
+    x_coord[i]=i
+data_bse['x']=x_coord
+
+arr1=['0']*len(data_bse)
+pd.to_numeric(arr1, errors='coerce')
+arr2=['0']*len(data_bse)
+pd.to_numeric(arr2, errors='coerce')
+arr=['0']*len(data_bse)
+pd.to_numeric(arr, errors='coerce')
+
+
+x_values = np.linspace(5,500, 100)
+x=x_values.astype(int)
+y_values = np.zeros(100)
+plt.figure(figsize=(12, 6))
+for i in range(100):
+    y_values[i] = fluct(x_values[i],data_bse,2)
+
+log_x=np.log(x_values)
+log_y=np.log(y_values)
+
+plt.plot(x_values, y_values)
+plt.title(' Plot of net-fluctuation vs s')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.grid(True)
+plt.show()
+
+plt.plot(log_x, log_y)
+plt.title('log-log Plot of net-fluctuation vs s')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.grid(True)
+plt.show()
+
+Hurst=((log_y[99]-log_y[0])/(log_x[99]-log_x[0]))
+print("Hurst Exponent is:",Hurst)
+
+plt.figure(figsize=(12, 6))
+plt.plot(data_bse.index, data_bse['Adj Close'], label='Closing Price')
+plt.xlabel('Time')
+plt.ylabel('Closing Price')
+plt.title('Closing-Price vs Time')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(12, 6))
+plt.plot(data_bse.index, data_bse['logret'], label='Log Returns')
+plt.xlabel('Time')
+plt.ylabel('Log Returns')
+plt.title('Log Returns vs Time')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+hurst_bse=['0']*104
+for i in range(104):
+    hurst_bse[i]=hurst_exponent(data_bse[25*i:25*(i+1)])
+
+
+
+x = np.linspace(0, 2600, 104)
+y = hurst_bse
+
+
+plt.figure(figsize=(12,8))
+plt.plot(x, y)
+plt.xlabel('X axis')
+plt.ylabel('Y axis')
+plt.title('Line Plot of Y = hurst(X)')
+
+plt.show()
