@@ -1,0 +1,51 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import yfinance as yf
+
+# List of stock tickers
+tickers = ['AAPL', 'TSLA', 'GOOG', 'NFLX', 'MSFT']
+start_date = '2019-01-01'
+end_date = '2023-01-31'
+
+# Bollinger Bands Parameters
+window = 20
+num_std = 2
+
+def fetch_data(ticker):
+    data = yf.download(ticker, start=start_date, end=end_date)
+    data = data[['Adj Close']].dropna()
+    return data
+
+def bollinger_bands(df, window=20, num_std=2):
+    df['SMA'] = df['Adj Close'].rolling(window).mean()
+    df['STD'] = df['Adj Close'].rolling(window).std()
+    df['Upper'] = df['SMA'] + num_std * df['STD']
+    df['Lower'] = df['SMA'] - num_std * df['STD']
+    return df
+
+def trading_signals(df):
+    # Buy when price crosses below lower band; Sell when price crosses above upper band
+    df['Buy'] = ((df['Adj Close'].shift(1) > df['Lower'].shift(1)) & (df['Adj Close'] <= df['Lower']))
+    df['Sell'] = ((df['Adj Close'].shift(1) < df['Upper'].shift(1)) & (df['Adj Close'] >= df['Upper']))
+    return df
+
+def plot_bollinger(df, ticker):
+    plt.figure(figsize=(14,6))
+    plt.plot(df.index, df['Adj Close'], label='Adj Close', color='blue')
+    plt.plot(df.index, df['SMA'], label='SMA 20', color='orange')
+    plt.plot(df.index, df['Upper'], label='Upper Band', color='green', linestyle='--')
+    plt.plot(df.index, df['Lower'], label='Lower Band', color='red', linestyle='--')
+    plt.scatter(df.index[df['Buy']], df['Adj Close'][df['Buy']], marker='^', color='green', label='Buy Signal', s=100)
+    plt.scatter(df.index[df['Sell']], df['Adj Close'][df['Sell']], marker='v', color='red', label='Sell Signal', s=100)
+    plt.title(f'Bollinger Bands Trading Signals for {ticker}')
+    plt.xlabel('Date')
+    plt.ylabel('Price')
+    plt.legend()
+    plt.show()
+
+for ticker in tickers:
+    df = fetch_data(ticker)
+    df = bollinger_bands(df,window,num_std)
+    df = trading_signals(df)
+    plot_bollinger(df,ticker)
