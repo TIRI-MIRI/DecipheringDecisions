@@ -1,0 +1,23 @@
+Q1.
+Dominant strategy for Player 1:c
+Dominant strategy for Player 2:2
+
+Nash Equilibrium:(c, 2)
+Inference:The dominant strategies coincide with the Nash equilibrium.
+
+Q2.
+Mixed-strategy Nash Equilibrium:Both firms choose Strategy I with probability 0.5 and Strategy II with probability 0.5
+Values:p=0.5,q=0.5
+
+
+Q3.
+(a)Nash Equilibrium quantities:
+q₁=q₂=(a−1)/(3b)
+
+(b) Cartel quantities:
+q₁=q₂=(a−1)/(4b)
+
+This is not a Nash equilibrium.
+
+(c) Better strategy:
+Cartel yields higher profit but is unstable and not self-enforcing; operating independently is stable
